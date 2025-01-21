@@ -1,6 +1,6 @@
-# Predicate-v4
+# Compliant Uniswap
 
-A compliant V4 hook powered by the Predicate network.
+Compliant V4 hook powered by the Predicate network.
 
 This template is actively maintained -- you can update the v4 dependencies, scripts, and helpers: 
 ```bash
