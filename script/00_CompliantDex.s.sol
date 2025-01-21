@@ -6,11 +6,11 @@ import {Hooks} from "v4-core/src/libraries/Hooks.sol";
 import {IPoolManager} from "v4-core/src/interfaces/IPoolManager.sol";
 
 import {Constants} from "./base/Constants.sol";
-import {Counter} from "../src/Counter.sol";
+import {CompliantDex} from "../src/CompliantDex.sol";
 import {HookMiner} from "../test/utils/HookMiner.sol";
 
-/// @notice Mines the address and deploys the Counter.sol Hook contract
-contract CounterScript is Script, Constants {
+/// @notice Mines the address and deploys the CompliantDex.sol Hook contract
+contract CompliantDexScript is Script, Constants {
     function setUp() public {}
 
     function run() public {
@@ -23,11 +23,11 @@ contract CounterScript is Script, Constants {
         // Mine a salt that will produce a hook address with the correct flags
         bytes memory constructorArgs = abi.encode(POOLMANAGER);
         (address hookAddress, bytes32 salt) =
-            HookMiner.find(CREATE2_DEPLOYER, flags, type(Counter).creationCode, constructorArgs);
+            HookMiner.find(CREATE2_DEPLOYER, flags, type(CompliantDex).creationCode, constructorArgs);
 
         // Deploy the hook using CREATE2
         vm.broadcast();
-        Counter counter = new Counter{salt: salt}(IPoolManager(POOLMANAGER));
-        require(address(counter) == hookAddress, "CounterScript: hook address mismatch");
+        CompliantDex dex = new CompliantDex{salt: salt}(IPoolManager(POOLMANAGER), address(0), "policyID");
+        require(address(dex) == hookAddress, "CompliantDexScript: hook address mismatch");
     }
 }
