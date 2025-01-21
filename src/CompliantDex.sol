@@ -10,13 +10,13 @@ import {PoolId, PoolIdLibrary} from "v4-core/src/types/PoolId.sol";
 import {BalanceDelta} from "v4-core/src/types/BalanceDelta.sol";
 import {BeforeSwapDelta, BeforeSwapDeltaLibrary} from "v4-core/src/types/BeforeSwapDelta.sol";
 
-contract Counter is BaseHook {
-    using PoolIdLibrary for PoolKey;
+import {PredicateClient} from "lib/predicate-contracts/src/mixins/PredicateClient.sol";
+import {PredicateMessage} from "lib/predicate-contracts/src/interfaces/IPredicateClient.sol";
+import {IPredicateManager} from "lib/predicate-contracts/src/interfaces/IPredicateManager.sol";
 
-    // NOTE: ---------------------------------------------------------
-    // state variables should typically be unique to a pool
-    // a single hook contract should be able to service multiple pools
-    // ---------------------------------------------------------------
+
+contract CompliantDex is BaseHook, PredicateClient {
+    using PoolIdLibrary for PoolKey;
 
     mapping(PoolId => uint256 count) public beforeSwapCount;
     mapping(PoolId => uint256 count) public afterSwapCount;
@@ -24,7 +24,9 @@ contract Counter is BaseHook {
     mapping(PoolId => uint256 count) public beforeAddLiquidityCount;
     mapping(PoolId => uint256 count) public beforeRemoveLiquidityCount;
 
-    constructor(IPoolManager _poolManager) BaseHook(_poolManager) {}
+    constructor(IPoolManager _poolManager, address _ServiceManager, string memory _policyID) BaseHook(_poolManager) {
+        _initPredicateClient(_ServiceManager, _policyID);
+    }
 
     function getHookPermissions() public pure override returns (Hooks.Permissions memory) {
         return Hooks.Permissions({
@@ -45,9 +47,25 @@ contract Counter is BaseHook {
         });
     }
 
-    // -----------------------------------------------
-    // NOTE: see IHooks.sol for function documentation
-    // -----------------------------------------------
+    // ---------------------------------------------------------
+    // Predicate 
+    // ---------------------------------------------------------
+
+    function setPolicy(
+        string memory _policyID
+    ) external {
+        _setPolicy(_policyID);
+    }
+
+    function setPredicateManager(
+        address _predicateManager
+    ) public {
+        _setPredicateManager(_predicateManager);
+    }
+
+    // ---------------------------------------------------------
+    // Uniswap V4 
+    // ---------------------------------------------------------
 
     function beforeSwap(address, PoolKey calldata key, IPoolManager.SwapParams calldata, bytes calldata)
         external
