@@ -2,20 +2,30 @@
 
 Compliant, decentralized exchange powered by [Predicate](https://docs.predicate.io).
 
-### Check Forge Installation
-*Ensure that you have correctly installed Foundry (Forge) and that it's up to date. You can update Foundry by running:*
+## Usage
 
 ```
-foundryup
+forge build
 ```
 
-## Set up
-
-*requires [foundry](https://book.getfoundry.sh)*
+## Compliance Check
 
 ```
-forge install
-forge test
+constructor(IPoolManager _poolManager, address _ServiceManager, string memory _policyID, BaseHook _amm) 
+        BaseHook(_poolManager) 
+    {
+        amm = _amm;
+        _initPredicateClient(_ServiceManager, _policyID);
+        owner = msg.sender;
+    }
+
+    function isWhitelisted(address sender) public view returns (bool) {
+        return whitelist[sender];
+    }
+
+    function updateWhitelist(address sender, bool status) external {
+        whitelist[sender] = status;
+    }   
 ```
 
 ---
