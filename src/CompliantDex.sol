@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.24;
+pragma solidity ^0.8.20;
 
 import {BaseHook} from "v4-periphery/src/base/hooks/BaseHook.sol";
 
@@ -18,7 +18,6 @@ import {PredicateClient} from "lib/predicate-contracts/src/mixins/PredicateClien
 import {PredicateMessage} from "lib/predicate-contracts/src/interfaces/IPredicateClient.sol";
 import {IPredicateManager} from "lib/predicate-contracts/src/interfaces/IPredicateManager.sol";
 
-
 contract CompliantDex is BaseHook, PredicateClient {
     using CurrencyLibrary for Currency;
     using CurrencySettler for Currency;
@@ -27,20 +26,16 @@ contract CompliantDex is BaseHook, PredicateClient {
     using SafeCast for uint128;
     using StateLibrary for IPoolManager;
 
-    // ---------------------------------------------------------
-    // ERRORS
-    // ---------------------------------------------------------
-
     error PoolNotInitialized();
     error TickSpacingNotDefault();
     error LiquidityDoesntMeetMinimum();
     error SenderMustBeHook();
     error ExpiredPastDeadline();
     error TooMuchSlippage();
+    error SwapsNotAllowed();
 
-    // ---------------------------------------------------------
-    // CONSTANTS
-    // ---------------------------------------------------------
+    event SwapAttemptBlocked(address sender, PoolKey key);
+    event LiquidityAdded(address sender, uint256 amount0, uint256 amount1);
 
     bytes internal constant ZERO_BYTES = bytes("");
 
@@ -50,50 +45,27 @@ contract CompliantDex is BaseHook, PredicateClient {
     int256 internal constant MAX_INT = type(int256).max;
     uint16 internal constant MINIMUM_LIQUIDITY = 1000;
 
-    // ---------------------------------------------------------
-    // STATE
-    // ---------------------------------------------------------
+    mapping(PoolId => uint256) public poolInfo;
+    mapping(PoolId => uint256) public beforeRemoveLiquidityCount;
+    mapping(PoolId => uint256) public afterSwapCount;
+    mapping(address => bool) public allowedLiquidityProviders;
+    mapping(address => bool) public whitelist;
 
-    struct CallbackData {
-        address sender;
-        PoolKey key;
-        IPoolManager.ModifyLiquidityParams params;
-    }
+    CompliantDex public fullRange;
 
-    struct PoolInfo {
-        bool hasAccruedFees;
-        address liquidityToken;
-    }
-
-    struct AddLiquidityParams {
-        Currency currency0;
-        Currency currency1;
-        uint24 fee;
-        uint256 amount0Desired;
-        uint256 amount1Desired;
-        uint256 amount0Min;
-        uint256 amount1Min;
-        address to;
-        uint256 deadline;
-    }
-
-    struct RemoveLiquidityParams {
-        Currency currency0;
-        Currency currency1;
-        uint24 fee;
-        uint256 liquidity;
-        uint256 deadline;
-    }
-
-    mapping(PoolId => uint256 count) public poolInfo;
-
-    constructor(IPoolManager _poolManager, address _ServiceManager, string memory _policyID) BaseHook(_poolManager) {
+    constructor(IPoolManager _poolManager, address _ServiceManager, string memory _policyID, CompliantDex _fullRange) 
+        BaseHook(_poolManager) 
+    {
+        fullRange = _fullRange;
         _initPredicateClient(_ServiceManager, _policyID);
     }
 
-    modifier ensure(uint256 deadline) {
-        if (deadline < block.timestamp) revert ExpiredPastDeadline();
-        _;
+    function isWhitelisted(address sender) public view returns (bool) {
+        return whitelist[sender];
+    }
+
+    function updateWhitelist(address sender, bool status) external {
+        whitelist[sender] = status;
     }
 
     function getHookPermissions() public pure override returns (Hooks.Permissions memory) {
@@ -115,60 +87,25 @@ contract CompliantDex is BaseHook, PredicateClient {
         });
     }
 
-    // ---------------------------------------------------------
-    // Predicate 
-    // ---------------------------------------------------------
-
-    function setPolicy(
-        string memory _policyID
-    ) external {
-        _setPolicy(_policyID);
-    }
-
-    function setPredicateManager(
-        address _predicateManager
-    ) public {
-        _setPredicateManager(_predicateManager);
-    }
-
-    // ---------------------------------------------------------
-    // Full Range Hook
-    // ---------------------------------------------------------
-
-    function beforeSwap(address, PoolKey calldata key, IPoolManager.SwapParams calldata, bytes calldata)
-        external
-        override
-        returns (bytes4, BeforeSwapDelta, uint24)
+    function beforeSwap(address sender, PoolKey calldata key, IPoolManager.SwapParams calldata params, bytes calldata data) 
+        external override returns (bytes4, BeforeSwapDelta, uint24) 
     {
-        beforeSwapCount[key.toId()]++;
-        return (BaseHook.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0);
+        if (isWhitelisted(sender)) {
+            return fullRange.beforeSwap(sender, key, params, data);
+        }
+        revert SwapsNotAllowed();
     }
 
-    function afterSwap(address, PoolKey calldata key, IPoolManager.SwapParams calldata, BalanceDelta, bytes calldata)
-        external
-        override
-        returns (bytes4, int128)
+    function beforeAddLiquidity(address sender, PoolKey calldata key, IPoolManager.ModifyLiquidityParams calldata params, bytes calldata data)
+        external override returns (bytes4)
     {
-        afterSwapCount[key.toId()]++;
-        return (BaseHook.afterSwap.selector, 0);
+        require(isWhitelisted(sender), "Sender not compliant");
+        return fullRange.beforeAddLiquidity(sender, key, params, data);
     }
 
-    function beforeAddLiquidity(
-        address,
-        PoolKey calldata key,
-        IPoolManager.ModifyLiquidityParams calldata,
-        bytes calldata
-    ) external override returns (bytes4) {
-        beforeAddLiquidityCount[key.toId()]++;
-        return BaseHook.beforeAddLiquidity.selector;
-    }
-
-    function beforeRemoveLiquidity(
-        address,
-        PoolKey calldata key,
-        IPoolManager.ModifyLiquidityParams calldata,
-        bytes calldata
-    ) external override returns (bytes4) {
+    function beforeRemoveLiquidity(address, PoolKey calldata key, IPoolManager.ModifyLiquidityParams calldata, bytes calldata)
+        external override returns (bytes4) 
+    {
         beforeRemoveLiquidityCount[key.toId()]++;
         return BaseHook.beforeRemoveLiquidity.selector;
     }
