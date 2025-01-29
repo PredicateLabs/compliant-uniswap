@@ -18,7 +18,7 @@ import {PredicateClient} from "lib/predicate-std/src/mixins/PredicateClient.sol"
 import {PredicateMessage} from "lib/predicate-std/src/interfaces/IPredicateClient.sol";
 import {IPredicateManager} from "lib/predicate-std/src/interfaces/IPredicateManager.sol";
 
-contract CompliantDex is BaseHook, PredicateClient {
+contract CompliantUniswap is BaseHook, PredicateClient {
     using CurrencyLibrary for Currency;
     using CurrencySettler for Currency;
     using PoolIdLibrary for PoolKey;
@@ -46,18 +46,22 @@ contract CompliantDex is BaseHook, PredicateClient {
     uint16 internal constant MINIMUM_LIQUIDITY = 1000;
 
     mapping(PoolId => uint256) public poolInfo;
-    mapping(PoolId => uint256) public beforeRemoveLiquidityCount;
-    mapping(PoolId => uint256) public afterSwapCount;
+    mapping(PoolId => uint256) public beforeRemoveLiquidity;
+    mapping(PoolId => uint256) public afterSwap;
+
     mapping(address => bool) public allowedLiquidityProviders;
     mapping(address => bool) public whitelist;
 
-    CompliantDex public fullRange;
+    address public owner;
 
-    constructor(IPoolManager _poolManager, address _ServiceManager, string memory _policyID, CompliantDex _fullRange) 
+    BaseHook public amm;
+
+    constructor(IPoolManager _poolManager, address _ServiceManager, string memory _policyID, BaseHook _amm) 
         BaseHook(_poolManager) 
     {
-        fullRange = _fullRange;
+        amm = _amm;
         _initPredicateClient(_ServiceManager, _policyID);
+        owner = msg.sender;
     }
 
     function isWhitelisted(address sender) public view returns (bool) {
@@ -87,12 +91,32 @@ contract CompliantDex is BaseHook, PredicateClient {
         });
     }
 
-    function beforeSwap(address sender, PoolKey calldata key, IPoolManager.SwapParams calldata params, bytes calldata data) 
-        external override returns (bytes4, BeforeSwapDelta, uint24) 
+    function beforeSwap(address sender, 
+                        PoolKey calldata key, 
+                        IPoolManager.SwapParams calldata params, 
+                        bytes calldata data
+                    ) external override returns (bytes4, BeforeSwapDelta, uint24) 
     {
         if (isWhitelisted(sender)) {
-            return fullRange.beforeSwap(sender, key, params, data);
+            return amm.beforeSwap(sender, key, params, data);
         }
+        revert SwapsNotAllowed();
+    }
+
+    function afterSwap(address sender, 
+                        PoolKey calldata key, 
+                        IPoolManager.SwapParams calldata params, 
+                        BalanceDelta delta,
+                        bytes calldata data
+                    ) external override returns (bytes4, int128)
+    {
+        afterSwapCount[key.toId()]++;
+
+        if (isWhitelisted(sender)) {
+            (bytes4 selector, int128 swapResult) = fullRange.afterSwap(sender, key, params, delta, data);
+            return (selector, swapResult);
+        }
+
         revert SwapsNotAllowed();
     }
 
@@ -100,7 +124,7 @@ contract CompliantDex is BaseHook, PredicateClient {
         external override returns (bytes4)
     {
         require(isWhitelisted(sender), "Sender not compliant");
-        return fullRange.beforeAddLiquidity(sender, key, params, data);
+        return amm.beforeAddLiquidity(sender, key, params, data);
     }
 
     function beforeRemoveLiquidity(address, PoolKey calldata key, IPoolManager.ModifyLiquidityParams calldata, bytes calldata)
