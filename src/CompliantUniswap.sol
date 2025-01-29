@@ -18,7 +18,11 @@ import {PredicateClient} from "lib/predicate-std/src/mixins/PredicateClient.sol"
 import {PredicateMessage} from "lib/predicate-std/src/interfaces/IPredicateClient.sol";
 import {IPredicateManager} from "lib/predicate-std/src/interfaces/IPredicateManager.sol";
 
-contract CompliantUniswap is BaseHook, PredicateClient {
+contract CompliantUniswap is BaseHook {
+
+    // Add storage for _predicateWrapper call
+    PredicateWrapper private _predicateWrapper;
+
     using CurrencyLibrary for Currency;
     using CurrencySettler for Currency;
     using PoolIdLibrary for PoolKey;
@@ -57,11 +61,18 @@ contract CompliantUniswap is BaseHook, PredicateClient {
     BaseHook public amm;
 
     constructor(IPoolManager _poolManager, address _ServiceManager, string memory _policyID, BaseHook _amm) 
-        BaseHook(_poolManager) 
+        BaseHook(_poolManager) (address _predicateWrapperAddress)
     {
         amm = _amm;
-        _initPredicateClient(_ServiceManager, _policyID);
+        _predicateWrapper = PredicateWrapper(_predicateWrapperAddress);
         owner = msg.sender;
+    }
+
+    function setPredicateWrapper(address _predicateManager
+        ) internal {
+            PredicateStorage storage $ = _getPredicateStorage();
+            $.serviceManager = IPredicateManager(_predicateManager);
+        }
     }
 
     function isWhitelisted(address sender) public view returns (bool) {
@@ -130,6 +141,7 @@ contract CompliantUniswap is BaseHook, PredicateClient {
     function beforeRemoveLiquidity(address, PoolKey calldata key, IPoolManager.ModifyLiquidityParams calldata, bytes calldata)
         external override returns (bytes4) 
     {
+        before
         beforeRemoveLiquidityCount[key.toId()]++;
         return BaseHook.beforeRemoveLiquidity.selector;
     }

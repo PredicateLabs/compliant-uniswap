@@ -19,7 +19,7 @@ import {IPositionManager} from "v4-periphery/src/interfaces/IPositionManager.sol
 import {EasyPosm} from "./utils/EasyPosm.sol";
 import {Fixtures} from "./utils/Fixtures.sol";
 
-contract CompliantDexTest is Test, Fixtures {
+contract CompliantUniswapTest is Test, Fixtures {
     using EasyPosm for IPositionManager;
     using PoolIdLibrary for PoolKey;
     using CurrencyLibrary for Currency;
@@ -33,29 +33,25 @@ contract CompliantDexTest is Test, Fixtures {
     int24 tickUpper;
 
     function setUp() public {
-        // creates the pool manager, utility routers, and test tokens
         deployFreshManagerAndRouters();
         deployMintAndApprove2Currencies();
 
         deployAndApprovePosm(manager);
 
-        // Deploy the hook to an address with the correct flags
         address flags = address(
             uint160(
                 Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG | Hooks.BEFORE_ADD_LIQUIDITY_FLAG
                     | Hooks.BEFORE_REMOVE_LIQUIDITY_FLAG
-            ) ^ (0x4444 << 144) // Namespace the hook to avoid collisions
+            ) ^ (0x4444 << 144) 
         );
         bytes memory constructorArgs = abi.encode(manager); //Add all the necessary constructor arguments from the hook
         deployCodeTo("CompliantDex.sol:CompliantDex", constructorArgs, flags);
         hook = CompliantDex(flags);
 
-        // Create the pool
         key = PoolKey(currency0, currency1, 3000, 60, IHooks(hook));
         poolId = key.toId();
         manager.initialize(key, SQRT_PRICE_1_1);
 
-        // Provide full-range liquidity to the pool
         tickLower = TickMath.minUsableTick(key.tickSpacing);
         tickUpper = TickMath.maxUsableTick(key.tickSpacing);
 
@@ -82,18 +78,15 @@ contract CompliantDexTest is Test, Fixtures {
     }
 
     function testCompliantDexHooks() public {
-        // positions were created in setup()
         assertEq(hook.beforeAddLiquidityCount(poolId), 1);
         assertEq(hook.beforeRemoveLiquidityCount(poolId), 0);
 
         assertEq(hook.beforeSwapCount(poolId), 0);
         assertEq(hook.afterSwapCount(poolId), 0);
 
-        // Perform a test swap //
         bool zeroForOne = true;
-        int256 amountSpecified = -1e18; // negative number indicates exact input swap!
+        int256 amountSpecified = -1e18; 
         BalanceDelta swapDelta = swap(key, zeroForOne, amountSpecified, ZERO_BYTES);
-        // ------------------- //
 
         assertEq(int256(swapDelta.amount0()), amountSpecified);
 
@@ -102,11 +95,9 @@ contract CompliantDexTest is Test, Fixtures {
     }
 
     function testLiquidityHooks() public {
-        // positions were created in setup()
         assertEq(hook.beforeAddLiquidityCount(poolId), 1);
         assertEq(hook.beforeRemoveLiquidityCount(poolId), 0);
 
-        // remove liquidity
         uint256 liquidityToRemove = 1e18;
         posm.decreaseLiquidity(
             tokenId,

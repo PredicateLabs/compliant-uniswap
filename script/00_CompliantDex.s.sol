@@ -6,7 +6,7 @@ import {Hooks} from "v4-core/src/libraries/Hooks.sol";
 import {IPoolManager} from "v4-core/src/interfaces/IPoolManager.sol";
 
 import {Constants} from "./base/Constants.sol";
-import {CompliantDex} from "../src/CompliantDex.sol";
+import {CompliantUniswap} from "../src/CompliantUniswap.sol";
 import {HookMiner} from "../test/utils/HookMiner.sol";
 
 /// @notice Mines the address and deploys the CompliantDex.sol Hook contract

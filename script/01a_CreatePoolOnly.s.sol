@@ -12,28 +12,16 @@ import {Config} from "./base/Config.sol";
 contract CreatePoolOnly is Script, Constants, Config {
     using CurrencyLibrary for Currency;
 
-    // NOTE: Be sure to set the addresses in Constants.sol and Config.sol
-
-    /////////////////////////////////////
-    // --- Parameters to Configure --- //
-    /////////////////////////////////////
-
-    // --- pool configuration --- //
-    // fees paid by swappers that accrue to liquidity providers
     uint24 lpFee = 5000; // 0.30%
     int24 tickSpacing = 60;
 
-    // starting price of the pool, in sqrtPriceX96
     uint160 startingPrice = 79228162514264337593543950336; // floor(sqrt(1) * 2^96)
 
-    // --- liquidity position configuration --- //
     uint256 public token0Amount = 1e18;
     uint256 public token1Amount = 1e18;
 
-    // range of the position
-    int24 tickLower = -600; // must be a multiple of tickSpacing
+    int24 tickLower = -600; 
     int24 tickUpper = 600;
-    /////////////////////////////////////
 
     function run() external {
         PoolKey memory pool = PoolKey({

@@ -8,109 +8,34 @@ import {Hooks} from "@uniswap/v4-core/src/libraries/Hooks.sol";
 import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
 import {BalanceDelta} from "@uniswap/v4-core/src/types/BalanceDelta.sol";
 import {BeforeSwapDelta} from "@uniswap/v4-core/src/types/BeforeSwapDelta.sol";
-import {BeforeSwapDeltaLibrary} from "@uniswap/v4-core/src/types/BeforeSwapDelta.sol";
 
 import {CompliantUniswap} from "./CompliantUniswap.sol";
 
-contract PredicateWrapper is IHooks {
-    BaseHook public immutable amm;
-
-    error SwapsNotAllowed();
-
-    constructor(BaseHook amm) {
-        amm = _amm;
+contract PredicateWrapper is PredicateClient {
+    constructor(address _serviceManager, string memory _policyID) {
+        _initPredicateClient(_serviceManager, _policyID);
     }
 
-    function beforeInitialize(address sender, PoolKey calldata key, uint160 sqrtPriceX96)
-        external
-        override
-        returns (bytes4)
-    {
-        return amm.beforeInitialize(sender, key, sqrtPriceX96, msg.data);
+    function beforeSwapPredicate(address sender, 
+                                    PoolKey calldata key, 
+                                    IPoolManager.SwapParams calldata params, 
+                                    bytes calldata data,
+                                    PredicateMessage memory predicateMessage,
+                                    address msgSender,
+                                    uint256 amount0,
+                                    uint256 amount1
+                                ) external returns (bytes4) {
+        bytes memory encodeSigandArgs = abi.encodeWithSignature("_beforeSwap(address,PoolKey,IPoolManager.SwapParams,bytes)", 
+                                                                    sender, key, params, data);
+        // return serviceManager.callPredicate(encodeSigandArgs);
+        require(_authorizeTransaction(predicateMessage, encodeSigandArgs, msgSender, amount0, amount1), "Unauthorized transaction");
     }
 
-    function afterInitialize(address sender, PoolKey calldata key, uint160 sqrtPriceX96, int24 tick)
-        external
-        override
-        returns (bytes4)
-    {
-        return Hooks.AFTER_INITIALIZE;
+    function setPolicy(string memory _policyID) external {
+        _setPolicyID(_policyID);
     }
 
-    function beforeAddLiquidity(address sender, PoolKey calldata key, IPoolManager.ModifyLiquidityParams calldata params, bytes calldata data)
-        external
-        override
-        returns (bytes4)
-    {
-        return amm.beforeAddLiquidity(sender, key, params, data);
-    }
-
-    function afterAddLiquidity(
-        address sender,
-        PoolKey calldata key,
-        IPoolManager.ModifyLiquidityParams calldata params,
-        BalanceDelta delta0,
-        BalanceDelta delta1,
-        bytes calldata data
-    ) external override returns (bytes4, BalanceDelta) {
-        return amm.afterAddLiquidity(sender, key, params, delta0, delta1, data);
-    }
-
-    function beforeRemoveLiquidity(address sender, PoolKey calldata key, IPoolManager.ModifyLiquidityParams calldata params, bytes calldata data)
-        external
-        override
-        returns (bytes4)
-    {
-        return amm.beforeRemoveLiquidity(sender, key, params, data);
-    }
-
-    function afterRemoveLiquidity(
-        address sender,
-        PoolKey calldata key,
-        IPoolManager.ModifyLiquidityParams calldata params,
-        BalanceDelta delta0,
-        BalanceDelta delta1,
-        bytes calldata data
-    ) external override returns (bytes4, BalanceDelta) {
-        return amm.afterRemoveLiquidity(sender, key, params, delta0, delta1, data);
-    }
-
-    function beforeSwap(
-        address sender,
-        PoolKey calldata key,
-        IPoolManager.SwapParams calldata params,
-        bytes calldata data
-    ) external override returns (bytes4, BeforeSwapDelta, uint24) {
-        revert SwapsNotAllowed();
-    }
-
-    function afterSwap(
-        address sender,
-        PoolKey calldata key,
-        IPoolManager.SwapParams calldata params,
-        BalanceDelta delta,
-        bytes calldata data
-    ) external override returns (bytes4, int128) {
-        return Hooks.AFTER_SWAP;
-    }
-
-    function beforeDonate(
-        address sender,
-        PoolKey calldata key,
-        uint256 amount0,
-        uint256 amount1,
-        bytes calldata data
-    ) external override returns (bytes4) {
-        return amm.beforeDonate(sender, key, amount0, amount1, data);
-    }
-
-    function afterDonate(
-        address sender,
-        PoolKey calldata key,
-        uint256 amount0,
-        uint256 amount1,
-        bytes calldata data
-    ) external override returns (bytes4) {
-        return amm.afterDonate(sender, key, amount0, amount1, data);
+    function setPredicateManager(address _predicateManager) public {
+        _setPredicateManager(_predicateManager);
     }
 }

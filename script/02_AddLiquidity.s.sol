@@ -20,23 +20,14 @@ contract AddLiquidityScript is Script, Constants, Config {
     using EasyPosm for IPositionManager;
     using StateLibrary for IPoolManager;
 
-    /////////////////////////////////////
-    // --- Parameters to Configure --- //
-    /////////////////////////////////////
-
-    // --- pool configuration --- //
-    // fees paid by swappers that accrue to liquidity providers
     uint24 lpFee = 3000; // 0.30%
     int24 tickSpacing = 60;
 
-    // --- liquidity position configuration --- //
     uint256 public token0Amount = 1e18;
     uint256 public token1Amount = 1e18;
 
-    // range of the position
     int24 tickLower = -600; // must be a multiple of tickSpacing
     int24 tickUpper = 600;
-    /////////////////////////////////////
 
     function run() external {
         PoolKey memory pool = PoolKey({
@@ -49,7 +40,6 @@ contract AddLiquidityScript is Script, Constants, Config {
 
         (uint160 sqrtPriceX96,,,) = POOLMANAGER.getSlot0(pool.toId());
 
-        // Converts token amounts to liquidity units
         uint128 liquidity = LiquidityAmounts.getLiquidityForAmounts(
             sqrtPriceX96,
             TickMath.getSqrtPriceAtTick(tickLower),
@@ -58,7 +48,6 @@ contract AddLiquidityScript is Script, Constants, Config {
             token1Amount
         );
 
-        // slippage limits
         uint256 amount0Max = token0Amount + 1 wei;
         uint256 amount1Max = token1Amount + 1 wei;
 
