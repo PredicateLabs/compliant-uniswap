@@ -14,9 +14,9 @@ import {BeforeSwapDelta, BeforeSwapDeltaLibrary} from "v4-core/src/types/BeforeS
 import {SafeCast} from "@uniswap/v4-core/src/libraries/SafeCast.sol";
 import {StateLibrary} from "@uniswap/v4-core/src/libraries/StateLibrary.sol";
 
-import {PredicateClient} from "lib/predicate-contracts/src/mixins/PredicateClient.sol";
-import {PredicateMessage} from "lib/predicate-contracts/src/interfaces/IPredicateClient.sol";
-import {IPredicateManager} from "lib/predicate-contracts/src/interfaces/IPredicateManager.sol";
+import {PredicateClient} from "lib/predicate-std/src/mixins/PredicateClient.sol";
+import {PredicateMessage} from "lib/predicate-std/src/interfaces/IPredicateClient.sol";
+import {IPredicateManager} from "lib/predicate-std/src/interfaces/IPredicateManager.sol";
 
 contract CompliantDex is BaseHook, PredicateClient {
     using CurrencyLibrary for Currency;
