@@ -20,7 +20,6 @@ import {IPredicateManager} from "lib/predicate-std/src/interfaces/IPredicateMana
 
 contract CompliantUniswap is BaseHook {
 
-    // Add storage for _predicateWrapper call
     PredicateWrapper private _predicateWrapper;
 
     using CurrencyLibrary for Currency;
@@ -145,4 +144,4 @@ contract CompliantUniswap is BaseHook {
         beforeRemoveLiquidityCount[key.toId()]++;
         return BaseHook.beforeRemoveLiquidity.selector;
     }
-}
+
