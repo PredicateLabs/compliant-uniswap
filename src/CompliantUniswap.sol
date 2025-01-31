@@ -50,26 +50,25 @@ contract CompliantUniswap is BaseHook {
     ) 
         BaseHook(_poolManager)
     {
-        _predicateWrapper = IPredicateWrapper(_predicateWrapperAddress);
+        _predicateWrapper = PredicateWrapper(_predicateWrapperAddress);
         owner = msg.sender;
     }
 
     function setPredicateWrapper(address predicateWrapper) external {
-        require(msg.sender == owener, "Not owner");
-        _predicateWrapper = IPredicateWrapper(predicateWrapper);
-        }
+        require(msg.sender == owner, "Not owner");
+        _predicateWrapper = PredicateWrapper(predicateWrapper);
     }
 
-    function isWhitelisted(address sender) view returns (bool) {
+    function isWhitelisted(address sender) public view returns (bool) {
         return whitelist[sender];
     }
 
-    function updateWhitelist(address sender, bool status) {
+    function updateWhitelist(address sender, bool status) public {
         require(msg.sender == owner, "Not owner");
         whitelist[sender] = status;
     }
 
-    function getHookPermissions() pure override returns (Hooks.Permissions memory) {
+    function getHookPermissions() public pure override returns (Hooks.Permissions memory) {
         return Hooks.Permissions({
             beforeInitialize: false,
             afterInitialize: false,
@@ -92,7 +91,7 @@ contract CompliantUniswap is BaseHook {
                         PoolKey calldata key, 
                         IPoolManager.SwapParams calldata params, 
                         bytes calldata data
-                    ) override returns (bytes4, BeforeSwapDelta, uint24) 
+                    ) public override returns (bytes4, BeforeSwapDelta, uint24) 
     {
         if (isWhitelisted(sender)) {
             (bytes4 sel, bytes memory hookData) = _predicateWrapper.beforeSwap(sender, key, params, data);
@@ -106,10 +105,8 @@ contract CompliantUniswap is BaseHook {
                         IPoolManager.SwapParams calldata params, 
                         BalanceDelta delta,
                         bytes calldata data
-                    ) override returns (bytes4, int128)
+                    ) public override returns (bytes4, int128)
     {
-        afterSwapCount[key.toId()]++;
-
         if (isWhitelisted(sender)) {
             (bytes4 selector, int128 swapResult) = _predicateWrapper.afterSwap(sender, key, params, delta, data);
             return (selector, swapResult);
@@ -119,7 +116,7 @@ contract CompliantUniswap is BaseHook {
     }
 
     function beforeAddLiquidity(address sender, PoolKey calldata key, IPoolManager.ModifyLiquidityParams calldata params, bytes calldata data)
-        override returns (bytes4)
+        public override returns (bytes4)
     {
         require(isWhitelisted(sender), "Sender not compliant");
         return _predicateWrapper.beforeAddLiquidity(sender, key, params, data);
@@ -130,7 +127,8 @@ contract CompliantUniswap is BaseHook {
                                     PoolKey calldata key, 
                                     IPoolManager.ModifyLiquidityParams calldata, 
                                     bytes calldata
-                                ) override returns (bytes4) 
+                                ) public override returns (bytes4) 
     {
         return BaseHook.beforeRemoveLiquidity.selector;
     }
+}
