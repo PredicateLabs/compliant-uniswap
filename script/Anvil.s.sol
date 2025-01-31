@@ -46,13 +46,13 @@ contract AnvilScript is Script, DeployPermit2 {
 
         // Mine a salt that will produce a hook address with the correct permissions
         (address hookAddress, bytes32 salt) =
-            HookMiner.find(CREATE2_DEPLOYER, permissions, type(CompliantDex).creationCode, abi.encode(address(manager)));
+            HookMiner.find(CREATE2_DEPLOYER, permissions, type(CompliantUniswap).creationCode, abi.encode(address(manager)));
 
         // ----------------------------- //
         // Deploy the hook using CREATE2 //
         // ----------------------------- //
         vm.broadcast();
-        CompliantDex dex = new CompliantDex{salt: salt}(manager, address(0), "policyID");
+        CompliantUniswap dex = new CompliantUniswap{salt: salt}(manager, address(0), "policyID");
         require(address(dex) == hookAddress, "AnvilScript: hook address mismatch");
 
         // Additional helpers for interacting with the pool
