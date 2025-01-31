@@ -14,12 +14,11 @@ import {BeforeSwapDelta, BeforeSwapDeltaLibrary} from "v4-core/src/types/BeforeS
 import {SafeCast} from "@uniswap/v4-core/src/libraries/SafeCast.sol";
 import {StateLibrary} from "@uniswap/v4-core/src/libraries/StateLibrary.sol";
 
-import {PredicateClient} from "lib/predicate-std/src/mixins/PredicateClient.sol";
-import {PredicateMessage} from "lib/predicate-std/src/interfaces/IPredicateClient.sol";
-import {IPredicateManager} from "lib/predicate-std/src/interfaces/IPredicateManager.sol";
+import {PredicateWrapper} from "./PredicateWrapper.sol";
 
 contract CompliantUniswap is BaseHook {
 
+    address public owner;
     PredicateWrapper private _predicateWrapper;
 
     using CurrencyLibrary for Currency;
@@ -40,49 +39,37 @@ contract CompliantUniswap is BaseHook {
     event SwapAttemptBlocked(address sender, PoolKey key);
     event LiquidityAdded(address sender, uint256 amount0, uint256 amount1);
 
-    bytes internal constant ZERO_BYTES = bytes("");
-
-    int24 internal constant MIN_TICK = -887220;
-    int24 internal constant MAX_TICK = -MIN_TICK;
-
-    int256 internal constant MAX_INT = type(int256).max;
-    uint16 internal constant MINIMUM_LIQUIDITY = 1000;
-
     mapping(PoolId => uint256) public poolInfo;
-    mapping(PoolId => uint256) public beforeRemoveLiquidity;
-    mapping(PoolId => uint256) public afterSwap;
 
-    mapping(address => bool) public allowedLiquidityProviders;
+    // mapping(address => bool) public allowedLiquidityProviders;
     mapping(address => bool) public whitelist;
 
-    address public owner;
-
-    BaseHook public amm;
-
-    constructor(IPoolManager _poolManager, address _ServiceManager, string memory _policyID, BaseHook _amm) 
-        BaseHook(_poolManager) (address _predicateWrapperAddress)
+    constructor(
+        IPoolManager _poolManager, 
+        address _predicateWrapperAddress
+    ) 
+        BaseHook(_poolManager)
     {
-        amm = _amm;
-        _predicateWrapper = PredicateWrapper(_predicateWrapperAddress);
+        _predicateWrapper = IPredicateWrapper(_predicateWrapperAddress);
         owner = msg.sender;
     }
 
-    function setPredicateWrapper(address _predicateManager
-        ) internal {
-            PredicateStorage storage $ = _getPredicateStorage();
-            $.serviceManager = IPredicateManager(_predicateManager);
+    function setPredicateWrapper(address predicateWrapper) external {
+        require(msg.sender == owener, "Not owner");
+        _predicateWrapper = IPredicateWrapper(predicateWrapper);
         }
     }
 
-    function isWhitelisted(address sender) public view returns (bool) {
+    function isWhitelisted(address sender) view returns (bool) {
         return whitelist[sender];
     }
 
-    function updateWhitelist(address sender, bool status) external {
+    function updateWhitelist(address sender, bool status) {
+        require(msg.sender == owner, "Not owner");
         whitelist[sender] = status;
     }
 
-    function getHookPermissions() public pure override returns (Hooks.Permissions memory) {
+    function getHookPermissions() pure override returns (Hooks.Permissions memory) {
         return Hooks.Permissions({
             beforeInitialize: false,
             afterInitialize: false,
@@ -105,10 +92,11 @@ contract CompliantUniswap is BaseHook {
                         PoolKey calldata key, 
                         IPoolManager.SwapParams calldata params, 
                         bytes calldata data
-                    ) external override returns (bytes4, BeforeSwapDelta, uint24) 
+                    ) override returns (bytes4, BeforeSwapDelta, uint24) 
     {
         if (isWhitelisted(sender)) {
-            return amm.beforeSwap(sender, key, params, data);
+            (bytes4 sel, bytes memory hookData) = _predicateWrapper.beforeSwap(sender, key, params, data);
+            return (sel, BeforeSwapDelta(0, 0), 0);
         }
         revert SwapsNotAllowed();
     }
@@ -118,12 +106,12 @@ contract CompliantUniswap is BaseHook {
                         IPoolManager.SwapParams calldata params, 
                         BalanceDelta delta,
                         bytes calldata data
-                    ) external override returns (bytes4, int128)
+                    ) override returns (bytes4, int128)
     {
         afterSwapCount[key.toId()]++;
 
         if (isWhitelisted(sender)) {
-            (bytes4 selector, int128 swapResult) = fullRange.afterSwap(sender, key, params, delta, data);
+            (bytes4 selector, int128 swapResult) = _predicateWrapper.afterSwap(sender, key, params, delta, data);
             return (selector, swapResult);
         }
 
@@ -131,17 +119,18 @@ contract CompliantUniswap is BaseHook {
     }
 
     function beforeAddLiquidity(address sender, PoolKey calldata key, IPoolManager.ModifyLiquidityParams calldata params, bytes calldata data)
-        external override returns (bytes4)
+        override returns (bytes4)
     {
         require(isWhitelisted(sender), "Sender not compliant");
-        return amm.beforeAddLiquidity(sender, key, params, data);
+        return _predicateWrapper.beforeAddLiquidity(sender, key, params, data);
     }
 
-    function beforeRemoveLiquidity(address, PoolKey calldata key, IPoolManager.ModifyLiquidityParams calldata, bytes calldata)
-        external override returns (bytes4) 
+    function beforeRemoveLiquidity(
+                                    address, 
+                                    PoolKey calldata key, 
+                                    IPoolManager.ModifyLiquidityParams calldata, 
+                                    bytes calldata
+                                ) override returns (bytes4) 
     {
-        before
-        beforeRemoveLiquidityCount[key.toId()]++;
         return BaseHook.beforeRemoveLiquidity.selector;
     }
-

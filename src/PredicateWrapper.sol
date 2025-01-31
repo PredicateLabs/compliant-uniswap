@@ -11,6 +11,10 @@ import {BeforeSwapDelta} from "@uniswap/v4-core/src/types/BeforeSwapDelta.sol";
 
 import {CompliantUniswap} from "./CompliantUniswap.sol";
 
+import { PredicateClient } from "predicate-std/src/mixins/PredicateClient.sol";
+import { PredicateMessage } from "predicate-std/src/interfaces/IPredicateClient.sol";
+
+
 contract PredicateWrapper is PredicateClient, IHooks {
     constructor(address _serviceManager, string memory _policyID) {
         _initPredicateClient(_serviceManager, _policyID);
@@ -39,11 +43,11 @@ contract PredicateWrapper is PredicateClient, IHooks {
 
     require(
             _authorizeTransaction(
-                predicateMessage,  // from decoded data
+                predicateMessage, 
                 encodeSigAndArgs, 
-                msgSender,         // from decoded data
-                amount0,           // from decoded data
-                amount1            // from decoded data
+                msgSender,         
+                amount0,           
+                amount1            
             ),
             "Unauthorized transaction"
         );
