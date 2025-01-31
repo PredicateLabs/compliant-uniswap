@@ -11,9 +11,8 @@ import {BeforeSwapDelta} from "@uniswap/v4-core/src/types/BeforeSwapDelta.sol";
 
 import {CompliantUniswap} from "./CompliantUniswap.sol";
 
-import { PredicateClient } from "predicate-std/src/mixins/PredicateClient.sol";
-import { PredicateMessage } from "predicate-std/src/interfaces/IPredicateClient.sol";
-
+import { PredicateClient } from "lib/predicate-std/src/mixins/PredicateClient.sol";
+import { PredicateMessage } from "lib/predicate-std/src/interfaces/IPredicateClient.sol";
 
 contract PredicateWrapper is PredicateClient, IHooks {
     constructor(address _serviceManager, string memory _policyID) {
@@ -55,8 +54,69 @@ contract PredicateWrapper is PredicateClient, IHooks {
         return (Hooks.BEFORE_SWAP, data);
     }
 
+    function afterSwap(
+                        address sender, 
+                        PoolKey calldata key, 
+                        IPoolManager.SwapParams calldata params, 
+                        BalanceDelta delta, bytes calldata data
+                    ) external override returns (bytes4 hookAction, bytes memory hookData) {
+        return (Hooks.AFTER_SWAP, data);
+    }
+
+    function afterInitialize(
+                                address,
+                                PoolKey calldata, 
+                                bytes calldata
+                            ) external override returns (bytes4 hookAction, bytes memory hookData) {
+        return (Hooks.AFTER_INITIALIZE);
+    }
+
+    function beforeAddLiquidity(
+                                address,
+                                PoolKey calldata, 
+                                IPoolManager.ModifyLiquidityParams calldata, 
+                                bytes calldata
+                            ) external override returns (bytes4 hookAction, bytes memory hookData) {
+        return (Hooks.BEFORE_ADD_LIQUIDITY);
+    }
+
+    function afterAddLiquidity(
+                                address,
+                                PoolKey calldata, 
+                                IPoolManager.ModifyLiquidityParams calldata, 
+                                BalanceDelta, 
+                                bytes calldata
+                            ) external override returns (bytes4 hookAction, bytes memory hookData) {
+        return (Hooks.AFTER_ADD_LIQUIDITY);
+    }
+
+    function beforeRemoveLiquidity(
+                                    address,
+                                    PoolKey calldata, 
+                                    IPoolManager.ModifyLiquidityParams calldata, 
+                                    bytes calldata
+                                ) external override returns (bytes4 hookAction, bytes memory hookData) {
+        return (Hooks.BEFORE_REMOVE_LIQUIDITY);
+    }
+
+    function beforeDonate(
+                            address,
+                            PoolKey calldata, 
+                            bytes calldata
+                        ) external override returns (bytes4 hookAction, bytes memory hookData) {
+        return (Hooks.BEFORE_DONATE);
+    }
+
+    function afterDonate(
+                            address,
+                            PoolKey calldata, 
+                            bytes calldata
+                        ) external override returns (bytes4 hookAction, bytes memory hookData) {
+        return (Hooks.AFTER_DONATE);
+    }
+
     function setPolicy(string memory _policyID) external {
-        _setPolicyID(_policyID);
+        _setPolicy(_policyID);
     }
 
     function setPredicateManager(address _predicateManager) public {
