@@ -11,24 +11,44 @@ import {BeforeSwapDelta} from "@uniswap/v4-core/src/types/BeforeSwapDelta.sol";
 
 import {CompliantUniswap} from "./CompliantUniswap.sol";
 
-contract PredicateWrapper is PredicateClient {
+contract PredicateWrapper is PredicateClient, IHooks {
     constructor(address _serviceManager, string memory _policyID) {
         _initPredicateClient(_serviceManager, _policyID);
     }
 
-    function beforeSwapPredicate(address sender, 
-                                    PoolKey calldata key, 
-                                    IPoolManager.SwapParams calldata params, 
-                                    bytes calldata data,
-                                    PredicateMessage memory predicateMessage,
-                                    address msgSender,
-                                    uint256 amount0,
-                                    uint256 amount1
-                                ) external returns (bytes4) {
-        bytes memory encodeSigandArgs = abi.encodeWithSignature("_beforeSwap(address,PoolKey,IPoolManager.SwapParams,bytes)", 
-                                                                    sender, key, params, data);
-        // return serviceManager.callPredicate(encodeSigandArgs);
-        require(_authorizeTransaction(predicateMessage, encodeSigandArgs, msgSender, amount0, amount1), "Unauthorized transaction");
+    function beforeSwap(
+        address sender, 
+        PoolKey calldata key, 
+        IPoolManager.SwapParams calldata params, 
+        bytes calldata data
+    ) external override returns (bytes4 hookAction, bytes memory hookData) {
+        (
+            PredicateMessage memory predicateMessage,
+            address msgSender,
+            uint256 amount0,
+            uint256 amount1
+        ) = abi.decode(data, (PredicateMessage, address, uint256, uint256));
+
+        bytes memory encodeSigAndArgs = abi.encodeWithSignature(
+            "_beforeSwap(address,PoolKey,IPoolManager.SwapParams,bytes)",
+            sender,
+            key,
+            params,
+            data
+        );
+
+    require(
+            _authorizeTransaction(
+                predicateMessage,  // from decoded data
+                encodeSigAndArgs, 
+                msgSender,         // from decoded data
+                amount0,           // from decoded data
+                amount1            // from decoded data
+            ),
+            "Unauthorized transaction"
+        );
+
+        return (Hooks.BEFORE_SWAP, data);
     }
 
     function setPolicy(string memory _policyID) external {
