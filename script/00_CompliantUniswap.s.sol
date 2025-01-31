@@ -9,25 +9,21 @@ import {Constants} from "./base/Constants.sol";
 import {CompliantUniswap} from "../src/CompliantUniswap.sol";
 import {HookMiner} from "../test/utils/HookMiner.sol";
 
-/// @notice Mines the address and deploys the CompliantDex.sol Hook contract
-contract CompliantDexScript is Script, Constants {
+contract CompliantUniswapScript is Script, Constants {
     function setUp() public {}
 
     function run() public {
-        // hook contracts must have specific flags encoded in the address
         uint160 flags = uint160(
             Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG | Hooks.BEFORE_ADD_LIQUIDITY_FLAG
                 | Hooks.BEFORE_REMOVE_LIQUIDITY_FLAG
         );
 
-        // Mine a salt that will produce a hook address with the correct flags
         bytes memory constructorArgs = abi.encode(POOLMANAGER);
         (address hookAddress, bytes32 salt) =
-            HookMiner.find(CREATE2_DEPLOYER, flags, type(CompliantDex).creationCode, constructorArgs);
+            HookMiner.find(CREATE2_DEPLOYER, flags, type(CompliantUniswap).creationCode, constructorArgs);
 
-        // Deploy the hook using CREATE2
         vm.broadcast();
-        CompliantDex dex = new CompliantDex{salt: salt}(IPoolManager(POOLMANAGER), address(0), "policyID");
+        CompliantUniswap dex = new CompliantUniswap{salt: salt}(IPoolManager(POOLMANAGER), address(0), "policyID");
         require(address(dex) == hookAddress, "CompliantDexScript: hook address mismatch");
     }
 }
