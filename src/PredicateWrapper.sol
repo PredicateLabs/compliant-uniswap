@@ -19,101 +19,131 @@ contract PredicateWrapper is PredicateClient, IHooks {
         _initPredicateClient(_serviceManager, _policyID);
     }
 
-    function beforeSwap(
+    function beforeInitialize(
         address sender, 
-        PoolKey calldata key, 
-        IPoolManager.SwapParams calldata params, 
-        bytes calldata data
-    ) external override returns (bytes4 hookAction, bytes memory hookData) {
-        (
-            PredicateMessage memory predicateMessage,
-            address msgSender,
-            uint256 amount0,
-            uint256 amount1
-        ) = abi.decode(data, (PredicateMessage, address, uint256, uint256));
-
-        bytes memory encodeSigAndArgs = abi.encodeWithSignature(
-            "_beforeSwap(address,PoolKey,IPoolManager.SwapParams,bytes)",
-            sender,
-            key,
-            params,
-            data
-        );
-
-    require(
-            _authorizeTransaction(
-                predicateMessage, 
-                encodeSigAndArgs, 
-                msgSender,         
-                amount0,           
-                amount1            
-            ),
-            "Unauthorized transaction"
-        );
-
-        return (Hooks.BEFORE_SWAP, data);
-    }
-
-    function afterSwap(
-                        address sender, 
-                        PoolKey calldata key, 
-                        IPoolManager.SwapParams calldata params, 
-                        BalanceDelta delta, bytes calldata data
-                    ) external override returns (bytes4 hookAction, bytes memory hookData) {
-        return (Hooks.AFTER_SWAP, data);
+        PoolKey calldata key,
+        uint160 sqrtPriceX96 
+    ) external override returns (bytes4) {
+        return (this.beforeInitialize.selector);
     }
 
     function afterInitialize(
-                                address,
-                                PoolKey calldata, 
-                                bytes calldata
-                            ) external override returns (bytes4 hookAction, bytes memory hookData) {
-        return (Hooks.AFTER_INITIALIZE);
+        address sender, 
+        PoolKey calldata key, 
+        uint160 sqrtPriceX96,
+        int24 tick
+    ) external override returns (bytes4) {
+        return (this.afterInitialize.selector);
     }
 
     function beforeAddLiquidity(
-                                address,
-                                PoolKey calldata, 
-                                IPoolManager.ModifyLiquidityParams calldata, 
-                                bytes calldata
-                            ) external override returns (bytes4 hookAction, bytes memory hookData) {
-        return (Hooks.BEFORE_ADD_LIQUIDITY);
+        address sender,
+        PoolKey calldata key,
+        IPoolManager.ModifyLiquidityParams calldata params,
+        bytes calldata hookData
+    ) 
+        external override returns (bytes4) {
+            return (this.beforeAddLiquidity.selector);
     }
 
     function afterAddLiquidity(
-                                address,
-                                PoolKey calldata, 
-                                IPoolManager.ModifyLiquidityParams calldata, 
-                                BalanceDelta, 
-                                bytes calldata
-                            ) external override returns (bytes4 hookAction, bytes memory hookData) {
-        return (Hooks.AFTER_ADD_LIQUIDITY);
+        address sender,
+        PoolKey calldata key,
+        IPoolManager.ModifyLiquidityParams calldata params,
+        BalanceDelta delta,
+        bytes calldata hookData
+    ) external override returns (bytes4, BalanceDelta) {    
+        BalanceDelta hookDelta = BalanceDelta(0,0);
+        return (this.afterAddLiquidity.selector, hookDelta);
     }
 
     function beforeRemoveLiquidity(
-                                    address,
-                                    PoolKey calldata, 
-                                    IPoolManager.ModifyLiquidityParams calldata, 
-                                    bytes calldata
-                                ) external override returns (bytes4 hookAction, bytes memory hookData) {
-        return (Hooks.BEFORE_REMOVE_LIQUIDITY);
+        address sender,
+        PoolKey calldata key,
+        IPoolManager.ModifyLiquidityParams calldata params,
+        bytes calldata hookData
+    ) external override returns (bytes4) {
+        return this.beforeRemoveLiquidity.selector;
+    }
+
+    function afterRemoveLiquidity(
+        address sender,
+        PoolKey calldata key,
+        IPoolManager.ModifyLiquidityParams calldata params,
+        BalanceDelta delta,
+        BalanceDelta feesAccrued,
+        BalanceDelta hookDelta,
+        bytes calldata hookData
+    ) external override returns (bytes4, BalanceDelta) {
+        BalanceDelta newHookDelta = BalanceDelta(0,0);
+        return (this.afterRemoveLiquidity.selector, newHookDelta);
+    }
+
+    function beforeSwap(
+            address sender,
+            PoolKey calldata key, 
+            IPoolManager.SwapParams calldata params, 
+            bytes calldata hookData
+        ) external override returns (bytes4, BeforeSwapDelta, uint24) {
+            (
+                PredicateMessage memory predicateMessage,
+                address msgSender,
+                uint256 amount0,
+                uint256 amount1
+            ) = abi.decode(hookData, (PredicateMessage, address, uint256, uint256));
+
+            bytes memory encodeSigAndArgs = abi.encodeWithSignature(
+                "_beforeSwap(address,PoolKey,IPoolManager.SwapParams,bytes)",
+                sender,
+                key,
+                params,
+                hookData
+            );
+
+            require(
+                _authorizeTransaction(
+                    predicateMessage,
+                    encodeSigAndArgs,
+                    msgSender,
+                    amount0,
+                    amount1
+                ),
+                "Unauthorized transaction"
+            );
+
+            BeforeSwapDelta swapDelta = BeforeSwapDelta(0,0);
+            return (this.beforeSwap.selector, swapDelta, 0);
+    }
+
+    function afterSwap(
+            address sender,
+            PoolKey calldata key, 
+            IPoolManager.SwapParams calldata params, 
+            BalanceDelta delta, 
+            bytes calldata hookData
+        ) external override returns (bytes4, int128) {
+            return (this.afterSwap.selector, 0);
     }
 
     function beforeDonate(
-                            address,
-                            PoolKey calldata, 
-                            bytes calldata
-                        ) external override returns (bytes4 hookAction, bytes memory hookData) {
-        return (Hooks.BEFORE_DONATE);
+            address sender,
+            PoolKey calldata key,
+            uint256 amount0,
+            uint256 amount1,
+            bytes calldata hookData
+        ) external override returns (bytes4) {
+            return this.beforeDonate.selector;
     }
 
     function afterDonate(
-                            address,
-                            PoolKey calldata, 
-                            bytes calldata
-                        ) external override returns (bytes4 hookAction, bytes memory hookData) {
-        return (Hooks.AFTER_DONATE);
-    }
+            address sender,
+            PoolKey calldata key,
+            uint256 amount0,
+            uint256 amount1,
+            bytes calldata hookData
+        ) external override returns (bytes4) {
+            return this.afterDonate.selector;
+        }
 
     function setPolicy(string memory _policyID) external {
         _setPolicy(_policyID);
