@@ -46,9 +46,9 @@ contract CompliantUniswapTest is Test, Fixtures {
         );
         bytes memory constructorArgs = abi.encode(manager); 
         deployCodeTo("CompliantUniswap.sol:CompliantUniswap", constructorArgs, flags);
-        hook = CompliantUniswap(flags);
+        dex = CompliantUniswap(flags);
 
-        key = PoolKey(currency0, currency1, 3000, 60, IHooks(hook));
+        key = PoolKey(currency0, currency1, 3000, 60, IHooks(dex));
         poolId = key.toId();
         manager.initialize(key, SQRT_PRICE_1_1);
 
