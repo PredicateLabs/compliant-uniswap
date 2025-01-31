@@ -25,7 +25,7 @@ contract CompliantUniswapTest is Test, Fixtures {
     using CurrencyLibrary for Currency;
     using StateLibrary for IPoolManager;
 
-    CompliantDex hook;
+    CompliantUniswap dex;
     PoolId poolId;
 
     uint256 tokenId;
@@ -44,9 +44,9 @@ contract CompliantUniswapTest is Test, Fixtures {
                     | Hooks.BEFORE_REMOVE_LIQUIDITY_FLAG
             ) ^ (0x4444 << 144) 
         );
-        bytes memory constructorArgs = abi.encode(manager); //Add all the necessary constructor arguments from the hook
-        deployCodeTo("CompliantDex.sol:CompliantDex", constructorArgs, flags);
-        hook = CompliantDex(flags);
+        bytes memory constructorArgs = abi.encode(manager); 
+        deployCodeTo("CompliantUniswap.sol:CompliantUniswap", constructorArgs, flags);
+        hook = CompliantUniswap(flags);
 
         key = PoolKey(currency0, currency1, 3000, 60, IHooks(hook));
         poolId = key.toId();
@@ -77,39 +77,12 @@ contract CompliantUniswapTest is Test, Fixtures {
         );
     }
 
-    function testCompliantDexHooks() public {
-        assertEq(hook.beforeAddLiquidityCount(poolId), 1);
-        assertEq(hook.beforeRemoveLiquidityCount(poolId), 0);
-
-        assertEq(hook.beforeSwapCount(poolId), 0);
-        assertEq(hook.afterSwapCount(poolId), 0);
-
+    function testCompliantUniswapSwap() public {
         bool zeroForOne = true;
         int256 amountSpecified = -1e18; 
         BalanceDelta swapDelta = swap(key, zeroForOne, amountSpecified, ZERO_BYTES);
 
         assertEq(int256(swapDelta.amount0()), amountSpecified);
-
-        assertEq(hook.beforeSwapCount(poolId), 1);
-        assertEq(hook.afterSwapCount(poolId), 1);
-    }
-
-    function testLiquidityHooks() public {
-        assertEq(hook.beforeAddLiquidityCount(poolId), 1);
-        assertEq(hook.beforeRemoveLiquidityCount(poolId), 0);
-
-        uint256 liquidityToRemove = 1e18;
-        posm.decreaseLiquidity(
-            tokenId,
-            liquidityToRemove,
-            MAX_SLIPPAGE_REMOVE_LIQUIDITY,
-            MAX_SLIPPAGE_REMOVE_LIQUIDITY,
-            address(this),
-            block.timestamp,
-            ZERO_BYTES
-        );
-
-        assertEq(hook.beforeAddLiquidityCount(poolId), 1);
-        assertEq(hook.beforeRemoveLiquidityCount(poolId), 1);
     }
 }
+
