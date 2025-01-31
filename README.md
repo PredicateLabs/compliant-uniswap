@@ -8,25 +8,9 @@ Compliant, decentralized exchange powered by [Predicate](https://docs.predicate.
 forge build
 ```
 
-## Compliance Check
+## Predicate
 
-```
-constructor(IPoolManager _poolManager, address _ServiceManager, string memory _policyID, BaseHook _amm) 
-        BaseHook(_poolManager) 
-    {
-        amm = _amm;
-        _initPredicateClient(_ServiceManager, _policyID);
-        owner = msg.sender;
-    }
-
-    function isWhitelisted(address sender) public view returns (bool) {
-        return whitelist[sender];
-    }
-
-    function updateWhitelist(address sender, bool status) external {
-        whitelist[sender] = status;
-    }   
-```
+TODO: Add Diagram and explanation
 
 ---
 
